@@ -76,38 +76,36 @@ module.exports = function (app) {
     })
 
     .put(function (req, res) {
-      let project = req.params.project;
-      let obj = Object.assign(req.body);
-      let flag = false;
+      const { _id, ...updates } = req.body || {};
 
-      if (Object.keys(obj).length === 0) {
-        flag = true;
+      if (!_id) {
         return res.json({ error: "missing _id" });
-      } else if (Object.keys(obj).length === 1 && obj._id) {
-        flag = true;
-        return res.json({ error: "no update field(s) sent", _id: obj._id });
-      } else if (Object.keys(obj).length >= 2 && obj._id) {
-        flag = true;
-        obj.updated_on = new Date();
-
-        issueModel
-          .findByIdAndUpdate(obj._id, obj)
-          .exec()
-          .then((data) => {
-            if (data)
-              return res.json({ result: "successfully updated", _id: obj._id });
-            else return res.json({ error: "could not update", _id: obj._id });
-          })
-          .catch((err) => console.log(err));
       }
 
-      if (!flag) return res.json({ error: "could not update", _id: obj._id });
+      const updateKeys = Object.keys(updates);
+      if (updateKeys.length === 0) {
+        return res.json({ error: "no update field(s) sent", _id });
+      }
+
+      const payload = {
+        ...updates,
+        updated_on: new Date(),
+      };
+
+      issueModel
+        .findByIdAndUpdate(_id, payload)
+        .exec()
+        .then((data) => {
+          if (data) {
+            return res.json({ result: "successfully updated", _id });
+          }
+          return res.json({ error: "could not update", _id });
+        })
+        .catch(() => res.json({ error: "could not update", _id }));
     })
 
     .delete(function (req, res) {
-      let project = req.params.project;
       let obj = Object.assign(req.body);
-      //console.log(obj)
       if (!obj._id) return res.json({ error: "missing _id" });
       else {
         issueModel

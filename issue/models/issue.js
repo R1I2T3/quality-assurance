@@ -39,6 +39,14 @@ function normalizeForCompare(key, value) {
   return value;
 }
 
+function normalizeIssueField(key, value) {
+  if (key === "open" && typeof value === "string") {
+    if (value === "true") return true;
+    if (value === "false") return false;
+  }
+  return value;
+}
+
 function makeQuery(resolver) {
   const run = () => Promise.resolve().then(resolver);
   return {
@@ -105,9 +113,19 @@ class IssueModel {
       const index = store.findIndex((item) => item._id === id);
       if (index < 0) return null;
 
+      const normalizedUpdates = {};
+      Object.keys(updates).forEach((key) => {
+        if (key !== "_id") {
+          normalizedUpdates[key] = normalizeIssueField(
+            key,
+            clone(updates[key]),
+          );
+        }
+      });
+
       const next = {
         ...store[index],
-        ...clone(updates),
+        ...normalizedUpdates,
         _id: store[index]._id,
       };
       store[index] = next;
