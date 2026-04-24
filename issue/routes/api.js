@@ -83,9 +83,9 @@ module.exports = function (app) {
         return res.json({ error: "missing _id" });
       }
 
-      // Any provided field counts as an update, including empty strings.
+      // FCC expects empty-string update fields to be treated as not sent.
       const payload = Object.keys(updates).reduce((acc, key) => {
-        if (updates[key] !== undefined) {
+        if (updates[key] !== undefined && updates[key] !== "") {
           acc[key] = updates[key];
         }
         return acc;
@@ -95,20 +95,20 @@ module.exports = function (app) {
         return res.json({ error: "no update field(s) sent", _id });
       }
 
-      payload.updated_on = new Date();
-
       issueModel
         .findOne({ _id, project })
         .exec()
         .then((issue) => {
           if (!issue) return null;
 
-          Object.keys(payload).forEach((key) => {
-            issue[key] = payload[key];
-          });
+          const now = new Date();
+          const lastUpdated = new Date(issue.updated_on);
+          payload.updated_on =
+            Number.isNaN(lastUpdated.getTime()) || now > lastUpdated
+              ? now
+              : new Date(lastUpdated.getTime() + 1);
 
-          const issueDoc = new issueModel(issue);
-          return issueDoc.save();
+          return issueModel.findByIdAndUpdate(_id, payload).exec();
         })
         .then((updatedIssue) => {
           if (!updatedIssue)
