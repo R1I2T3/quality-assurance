@@ -17,6 +17,7 @@ let idCounter = 1;
 
 function clone(value) {
   if (value === null || value === undefined) return value;
+  if (value instanceof Date) return new Date(value.getTime());
   if (Array.isArray(value)) return value.map(clone);
   if (typeof value !== "object") return value;
   const output = {};
