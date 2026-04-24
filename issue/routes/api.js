@@ -82,15 +82,20 @@ module.exports = function (app) {
         return res.json({ error: "missing _id" });
       }
 
-      const updateKeys = Object.keys(updates);
-      if (updateKeys.length === 0) {
+      // Ignore empty-string/undefined values so only actual update fields count.
+      const payload = Object.keys(updates).reduce((acc, key) => {
+        const value = updates[key];
+        if (value !== "" && value !== undefined) {
+          acc[key] = value;
+        }
+        return acc;
+      }, {});
+
+      if (Object.keys(payload).length === 0) {
         return res.json({ error: "no update field(s) sent", _id });
       }
 
-      const payload = {
-        ...updates,
-        updated_on: new Date(),
-      };
+      payload.updated_on = new Date();
 
       issueModel
         .findByIdAndUpdate(_id, payload)
@@ -116,7 +121,7 @@ module.exports = function (app) {
               res.json({ result: "successfully deleted", _id: obj._id });
             else res.json({ error: "could not delete", _id: obj._id });
           })
-          .catch((err) => console.log(err));
+          .catch(() => res.json({ error: "could not delete", _id: obj._id }));
       }
     });
 };
