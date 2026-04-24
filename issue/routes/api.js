@@ -76,17 +76,17 @@ module.exports = function (app) {
     })
 
     .put(function (req, res) {
+      const project = req.params.project;
       const { _id, ...updates } = req.body || {};
 
       if (!_id) {
         return res.json({ error: "missing _id" });
       }
 
-      // Ignore empty-string/undefined values so only actual update fields count.
+      // Any provided field counts as an update, including empty strings.
       const payload = Object.keys(updates).reduce((acc, key) => {
-        const value = updates[key];
-        if (value !== "" && value !== undefined) {
-          acc[key] = value;
+        if (updates[key] !== undefined) {
+          acc[key] = updates[key];
         }
         return acc;
       }, {});
@@ -98,13 +98,22 @@ module.exports = function (app) {
       payload.updated_on = new Date();
 
       issueModel
-        .findByIdAndUpdate(_id, payload)
+        .findOne({ _id, project })
         .exec()
-        .then((data) => {
-          if (data) {
-            return res.json({ result: "successfully updated", _id });
-          }
-          return res.json({ error: "could not update", _id });
+        .then((issue) => {
+          if (!issue) return null;
+
+          Object.keys(payload).forEach((key) => {
+            issue[key] = payload[key];
+          });
+
+          const issueDoc = new issueModel(issue);
+          return issueDoc.save();
+        })
+        .then((updatedIssue) => {
+          if (!updatedIssue)
+            return res.json({ error: "could not update", _id });
+          return res.json({ result: "successfully updated", _id });
         })
         .catch(() => res.json({ error: "could not update", _id }));
     })
